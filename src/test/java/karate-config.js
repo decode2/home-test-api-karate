@@ -6,8 +6,7 @@ function fn() {
   
   var config = {
     baseUrl: 'http://localhost:3100/api',
-    uuid: function() { return java.util.UUID.randomUUID().toString(); }
-  };
+  }
 
   // Timeout configuration (optional but recommended)
   karate.configure('connectTimeout', 5000);

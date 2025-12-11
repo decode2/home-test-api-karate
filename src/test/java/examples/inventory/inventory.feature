@@ -28,49 +28,43 @@ Feature: Inventory API Automation Scenarios
     When method get
     Then status 200
     # API returns a single object { ... }
+    # Validate all required fields: id, name, price, image
     And match response.id == '3'
     And match response.name == 'Baked Rolls x 8'
-    And match response.price == '#present'
+    And match response.price == '#string'
+    And match response.image == '#string'
 
-  # Requirement 3 & 6: Add Item (E2E Test)
-  Scenario: Add a new item successfully and verify persistence
-    # Generate a unique ID for this specific scenario execution
-    * def uniqueId = uuid()
+  # Requirement 3: Add item for non existent id
+  Scenario: Add a new item successfully with id 10
     * def newItem =
     """
     {
-      "id": "#(uniqueId)",
-      "name": "Java 17 Special",
-      "image": "java_logo.png",
-      "price": "$50"
+      "id": "10",
+      "name": "Hawaiian",
+      "image": "hawaiian.png",
+      "price": "$14"
     }
     """
     
-    # 1. Create the item
+    # Create the item with id 10
     Given path 'inventory/add'
     And request newItem
     When method post
     Then status 200
 
-    # 2. Verify it exists in the list (Regression)
-    Given path 'inventory'
-    When method get
-    Then status 200
-    # Search inside the 'data' array
-    And match response.data contains deep { "id": "#(uniqueId)", "name": "Java 17 Special" }
-
-  # Requirement 4: Error handling for duplicates
+  # Requirement 4: Add item for existent id
   Scenario: Validate error response when adding a duplicate ID
-    * def fixedId = '9999'
-    * def payload = { "id": fixedId, "name": "Duplicate", "image": "dup.png", "price": "$5" }
+    * def payload = 
+    """
+    {
+      "id": "10",
+      "name": "Hawaiian",
+      "image": "hawaiian.png",
+      "price": "$14"
+    }
+    """
     
-    # Pre-condition: Ensure item exists (Happy Path)
-    # We ignore 400 here because it might already exist from a previous run
-    Given path 'inventory/add'
-    And request payload
-    When method post
-    
-    # Test: Try to add the same item again
+    # Try to add item with id 10 again (should already exist from Requirement 3)
     Given path 'inventory/add'
     And request payload
     When method post
@@ -78,9 +72,19 @@ Feature: Inventory API Automation Scenarios
 
   # Requirement 5: Error handling for invalid payload
   Scenario: Validate error when mandatory fields are missing
+    * def invalidPayload = { "name": "Invalid Item", "price": "$0" }
     Given path 'inventory/add'
     # Payload missing 'id' field
-    And request { "name": "Invalid Item", "price": "$0" }
+    And request invalidPayload
     When method post
     Then status 400
     And match response contains "Not all requirements are met"
+
+  # Requirement 6: Validate recent added item is present in the inventory
+  Scenario: Verify item added in step 3 is present with correct data
+    * def expectedItem = { id: "10", name: "Hawaiian", image: "hawaiian.png", price: "$14" }
+    Given path 'inventory'
+    When method get
+    Then status 200
+    # Validate that the item with id "10" is present with correct data
+    And match response.data contains deep expectedItem
